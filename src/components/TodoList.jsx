@@ -1,13 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-const Modal = ({ message, onClose }) => (
-  <div className="modal-overlay" onClick={onClose}>
-    <div className="modal-content" onClick={e => e.stopPropagation()}>
-      <p>{message}</p>
-      <button onClick={onClose}>Close</button>
-    </div>
-  </div>
-);
+import AlertModal from './AlertModal'; // Adjust path as needed
 
 const COOKIE_NAME = 'todos';
 
@@ -114,7 +106,12 @@ const TodoList = () => {
         <button className="finish-day-btn" onClick={finishDay}>Finish Off Day</button>
       </div>
 
-      {modalOpen && <Modal message={modalMessage} onClose={() => setModalOpen(false)} />}
+      {modalOpen && (
+        <AlertModal
+          message={modalMessage}
+          onClose={() => setModalOpen(false)}
+        />
+      )}
     </>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import AlertModal from "./AlertModal"; // Adjust path as needed
 
 const MusicPlayer = () => {
   const playerRef = useRef(null);
@@ -10,6 +11,10 @@ const MusicPlayer = () => {
   const [volume, setVolume] = useState(50);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
 
   // Extract video ID from YouTube URL using regex
   const extractVideoId = (url) => {
@@ -97,14 +102,15 @@ const MusicPlayer = () => {
     }
   };
 
-  // Load video by ID or alert invalid URL
+  // Load video by ID or show modal invalid URL message
   const loadVideo = () => {
     if (!playerInstance.current) return;
     const id = extractVideoId(input.trim());
     if (id) {
       playerInstance.current.loadVideoById(id);
     } else {
-      alert("Invalid YouTube URL");
+      setModalMessage("Invalid YouTube URL");
+      setModalOpen(true);
     }
   };
 
@@ -138,64 +144,73 @@ const MusicPlayer = () => {
   };
 
   return (
-    <div className="music-player">
-      <div ref={playerRef} id="ytplayer" style={{ marginBottom: 12 }}></div>
-
-      <input
-        type="text"
-        placeholder="Enter YouTube URL to play..."
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && loadVideo()}
-        style={{ width: "100%", marginBottom: 10, padding: "8px" }}
-      />
-
-      <div
-        className="music-controls"
-        style={{ display: "flex", alignItems: "center", gap: "10px" }}
-      >
-        <button
-          className="skip-btn"
-          onClick={() => seekRelative(-10)}
-          title="Rewind 10 seconds"
-        >
-          ⏪
-        </button>
-
-        <button
-          className="play-pause-btn"
-          onClick={togglePlayPause}
-          title={isPlaying ? "Pause" : "Play"}
-        >
-          {isPlaying ? "⏸" : "▶"}
-        </button>
-
-        <button
-          className="skip-btn"
-          onClick={() => seekRelative(10)}
-          title="Fast-forward 10 seconds"
-        >
-          ⏩
-        </button>
-
-        <button onClick={loadVideo} style={{ padding: "6px 12px" }}>
-          Load
-        </button>
-
-        <p style={{ marginLeft: "12px" }}>Vol:</p>
+    <>
+      <div className="music-player">
+        <div ref={playerRef} id="ytplayer" style={{ marginBottom: 12 }}></div>
 
         <input
-          type="range"
-          min="0"
-          max="100"
-          value={volume}
-          onChange={handleVolumeChange}
-          className="volume-slider"
-          title="Volume"
-          style={{ flexGrow: 1 }}
+          type="text"
+          placeholder="Enter YouTube URL to play..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && loadVideo()}
+          style={{ width: "100%", marginBottom: 10, padding: "8px" }}
         />
+
+        <div
+          className="music-controls"
+          style={{ display: "flex", alignItems: "center", gap: "10px" }}
+        >
+          <button
+            className="skip-btn"
+            onClick={() => seekRelative(-10)}
+            title="Rewind 10 seconds"
+          >
+            ⏪
+          </button>
+
+          <button
+            className="play-pause-btn"
+            onClick={togglePlayPause}
+            title={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? "⏸" : "▶"}
+          </button>
+
+          <button
+            className="skip-btn"
+            onClick={() => seekRelative(10)}
+            title="Fast-forward 10 seconds"
+          >
+            ⏩
+          </button>
+
+          <button onClick={loadVideo} style={{ padding: "6px 12px" }}>
+            Load
+          </button>
+
+          <p style={{ marginLeft: "12px" }}>Vol:</p>
+
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={volume}
+            onChange={handleVolumeChange}
+            className="volume-slider"
+            title="Volume"
+            style={{ flexGrow: 1 }}
+          />
+        </div>
       </div>
-    </div>
+
+      {modalOpen && (
+        <AlertModal
+          message={modalMessage}
+          onClose={() => setModalOpen(false)}
+        />
+      )}
+    </>
   );
 };
 
