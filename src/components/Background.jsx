@@ -1,30 +1,43 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 const Background = () => {
+  const canvasRef = useRef(null);
+  const animationFrameId = useRef(null);
+
   useEffect(() => {
     const canvas = document.createElement('canvas');
     canvas.id = 'bg';
     document.body.appendChild(canvas);
+    canvasRef.current = canvas;
     const ctx = canvas.getContext('2d');
 
+    // Resize canvas and keep dimensions in closure
     const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     };
-
     resize();
     window.addEventListener('resize', resize);
 
+    // Store window size to avoid accessing global inside loop
+    let width = canvas.width;
+    let height = canvas.height;
+    const updateSize = () => {
+      width = canvas.width;
+      height = canvas.height;
+    };
+
+    // Stars, clouds, buildings initialization
     const stars = Array.from({ length: 150 }, () => ({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
+      x: Math.random() * width,
+      y: Math.random() * height,
       size: Math.random() * 1.5 + 0.5,
       alpha: Math.random(),
       twinkle: Math.random() * 0.015 + 0.005,
     }));
 
     const clouds = Array.from({ length: 4 }, () => ({
-      x: Math.random() * window.innerWidth,
+      x: Math.random() * width,
       y: Math.random() * 200 + 30,
       speed: 0.15 + Math.random() * 0.1,
       size: 80 + Math.random() * 40,
@@ -39,12 +52,14 @@ const Background = () => {
 
     let frame = 0;
 
+    // Precompute gradients outside the animation loop where possible
+    let skyGradient = ctx.createLinearGradient(0, 0, 0, height);
+    skyGradient.addColorStop(0, '#0b0b2a');
+    skyGradient.addColorStop(1, '#1a1a3f');
+
     const drawSky = () => {
-      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      gradient.addColorStop(0, '#0b0b2a');
-      gradient.addColorStop(1, '#1a1a3f');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = skyGradient;
+      ctx.fillRect(0, 0, width, height);
     };
 
     const drawStars = () => {
@@ -61,9 +76,11 @@ const Background = () => {
     };
 
     const drawMoon = () => {
-      const x = canvas.width - 150;
+      const x = width - 150;
       const y = 100;
       const r = 45;
+
+      // Cache radial gradient for moon glow
       const glow = ctx.createRadialGradient(x, y, 10, x, y, 100);
       glow.addColorStop(0, '#fffacd');
       glow.addColorStop(1, 'transparent');
@@ -90,7 +107,7 @@ const Background = () => {
         ctx.globalAlpha = 1;
 
         cloud.x += cloud.speed;
-        if (cloud.x > canvas.width + 150) {
+        if (cloud.x > width + 150) {
           cloud.x = -200;
           cloud.y = Math.random() * 200 + 30;
         }
@@ -98,9 +115,9 @@ const Background = () => {
     };
 
     const drawCity = () => {
-      const groundY = canvas.height - 160;
+      const groundY = height - 160;
       ctx.fillStyle = '#0e0e1a';
-      ctx.fillRect(0, groundY, canvas.width, 160);
+      ctx.fillRect(0, groundY, width, 160);
 
       cityBuildings.forEach((building) => {
         ctx.fillStyle = '#1a1a2d';
@@ -115,19 +132,19 @@ const Background = () => {
         });
       });
 
-      // Antenna light
+      // Antenna light blinking
       ctx.fillStyle = frame % 120 < 60 ? '#ff4444' : '#882222';
       ctx.beginPath();
-      ctx.arc(canvas.width - 200, groundY - 120, 4, 0, 2 * Math.PI);
+      ctx.arc(width - 200, groundY - 120, 4, 0, 2 * Math.PI);
       ctx.fill();
     };
 
     const drawRooftop = () => {
-      const baseY = canvas.height - 80;
+      const baseY = height - 80;
       ctx.fillStyle = '#141414';
-      ctx.fillRect(0, baseY, canvas.width, 80);
+      ctx.fillRect(0, baseY, width, 80);
       ctx.fillStyle = '#1e1e1e';
-      ctx.fillRect(0, baseY, canvas.width, 10);
+      ctx.fillRect(0, baseY, width, 10);
 
       // Air conditioner
       ctx.fillStyle = '#2d2d2d';
@@ -192,15 +209,19 @@ const Background = () => {
     };
 
     const loop = () => {
+      updateSize(); // update size variables if canvas resized
       draw();
-      requestAnimationFrame(loop);
+      animationFrameId.current = requestAnimationFrame(loop);
     };
 
     loop();
 
     return () => {
       window.removeEventListener('resize', resize);
-      document.body.removeChild(canvas);
+      cancelAnimationFrame(animationFrameId.current);
+      if (canvasRef.current) {
+        document.body.removeChild(canvasRef.current);
+      }
     };
   }, []);
 

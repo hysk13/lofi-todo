@@ -9,57 +9,67 @@ const Modal = ({ message, onClose }) => (
   </div>
 );
 
-const TodoList = () => {
-  // Load todos from cookie or start with empty list
-  const [todos, setTodos] = useState(() => {
-    const saved = document.cookie.split('; ').find(row => row.startsWith('todos='));
-    return saved ? JSON.parse(decodeURIComponent(saved.split('=')[1])) : [];
-  });
+const COOKIE_NAME = 'todos';
 
+// Helper: read todos from cookies
+const getTodosFromCookie = () => {
+  const cookie = document.cookie
+    .split('; ')
+    .find(row => row.startsWith(`${COOKIE_NAME}=`));
+  if (!cookie) return [];
+  try {
+    return JSON.parse(decodeURIComponent(cookie.split('=')[1]));
+  } catch {
+    return [];
+  }
+};
+
+// Helper: write todos to cookie
+const setTodosToCookie = (todos) => {
+  document.cookie = `${COOKIE_NAME}=${encodeURIComponent(JSON.stringify(todos))}; path=/; max-age=${60 * 60 * 24 * 365}`;
+};
+
+const TodoList = () => {
+  const [todos, setTodos] = useState(getTodosFromCookie);
   const [input, setInput] = useState('');
   const [modalMessage, setModalMessage] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Save todos to cookie whenever they change
   useEffect(() => {
-    document.cookie = `todos=${encodeURIComponent(JSON.stringify(todos))}; path=/`;
+    setTodosToCookie(todos);
   }, [todos]);
 
-  // Add a new todo if input is non-empty
   const addTodo = () => {
-    if (input.trim()) {
-      setTodos([...todos, { text: input.trim(), done: false }]);
-      setInput('');
-    }
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    setTodos(prev => [...prev, { text: trimmed, done: false }]);
+    setInput('');
   };
 
-  // Toggle done status for a todo item
-  const toggleDone = (index) => {
-    const updated = [...todos];
-    updated[index].done = !updated[index].done;
-    setTodos(updated);
+  const toggleDone = index => {
+    setTodos(prev =>
+      prev.map((todo, i) =>
+        i === index ? { ...todo, done: !todo.done } : todo
+      )
+    );
   };
 
-  // Delete a todo item by index
-  const deleteTodo = (index) => {
-    const updated = [...todos];
-    updated.splice(index, 1);
-    setTodos(updated);
+  const deleteTodo = index => {
+    setTodos(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Edit the text of a todo item
   const editTodo = (index, newText) => {
-    const updated = [...todos];
-    updated[index].text = newText;
-    setTodos(updated);
+    setTodos(prev =>
+      prev.map((todo, i) =>
+        i === index ? { ...todo, text: newText } : todo
+      )
+    );
   };
 
-  // Show a modal message based on todo completion status
   const finishDay = () => {
-    const allDone = todos.length > 0 && todos.every(todo => todo.done);
     if (todos.length === 0) {
       setModalMessage("You didn't add anything today — that's okay! Rest is important too.");
-    } else if (allDone) {
+    } else if (todos.every(todo => todo.done)) {
       setModalMessage("🎉 Great job! You finished everything today. Take a break, you earned it!");
     } else {
       setModalMessage("Not everything got done, and that’s okay. You’re still making progress. Be kind to yourself 💜");
@@ -90,7 +100,7 @@ const TodoList = () => {
               <input
                 type="text"
                 value={todo.text}
-                onChange={(e) => editTodo(index, e.target.value)}
+                onChange={e => editTodo(index, e.target.value)}
                 className="todo-edit-input"
               />
               <button onClick={() => toggleDone(index)}>

@@ -1,28 +1,36 @@
 import React, { useEffect, useRef, useState } from "react";
 
 const MusicPlayer = () => {
-  const playerRef = useRef(null);         // Reference to the div where YouTube player loads
-  const playerInstance = useRef(null);    // YouTube Player instance reference
-  const timerId = useRef(null);            // Interval timer for updating playback time
+  const playerRef = useRef(null);
+  const playerInstance = useRef(null);
+  const timerId = useRef(null);
 
-  const [input, setInput] = useState("");          // YouTube URL input
-  const [isPlaying, setIsPlaying] = useState(false);  // Playback state
-  const [volume, setVolume] = useState(50);         // Volume (0-100)
-  const [duration, setDuration] = useState(0);      // Video duration (seconds)
-  const [currentTime, setCurrentTime] = useState(0);// Current playback time (seconds)
+  const [input, setInput] = useState("");
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(50);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
 
-  // Create YouTube player instance when API is ready and not yet created
+  // Extract video ID from YouTube URL using regex
+  const extractVideoId = (url) => {
+    const regex =
+      /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : "";
+  };
+
+  // Create YouTube player instance
   const createPlayer = () => {
-    if (!window.YT || playerInstance.current) return; // Prevent duplicate creation or if API not loaded
+    if (!window.YT || playerInstance.current) return;
 
     playerInstance.current = new window.YT.Player(playerRef.current, {
       height: "180",
       width: "320",
       playerVars: {
-        modestbranding: 1, // Minimal YouTube branding
-        controls: 0,       // Hide default controls, we use custom ones
-        rel: 0,            // Don't show related videos at the end
-        disablekb: 1,      // Disable keyboard controls
+        modestbranding: 1,
+        controls: 0,
+        rel: 0,
+        disablekb: 1,
       },
       events: {
         onReady: (event) => {
@@ -34,6 +42,8 @@ const MusicPlayer = () => {
           setIsPlaying(state === window.YT.PlayerState.PLAYING);
 
           if (state === window.YT.PlayerState.PLAYING) {
+            const title = playerInstance.current.getVideoData()?.title;
+            if (title) document.title = title;
             startTimer();
           } else {
             stopTimer();
@@ -43,9 +53,9 @@ const MusicPlayer = () => {
     });
   };
 
-  // Load YouTube API script and create player once ready
+  // Load YouTube API script and initialize player
   useEffect(() => {
-    if (window.YT && window.YT.Player) {
+    if (window.YT?.Player) {
       createPlayer();
       return;
     }
@@ -58,7 +68,6 @@ const MusicPlayer = () => {
       createPlayer();
     };
 
-    // Cleanup on unmount: clear timer, destroy player, remove API ready callback
     return () => {
       stopTimer();
       if (playerInstance.current) {
@@ -69,18 +78,18 @@ const MusicPlayer = () => {
     };
   }, []);
 
-  // Update currentTime and duration every second during playback
+  // Timer to update currentTime and duration every second while playing
   const startTimer = () => {
     if (timerId.current) return;
     timerId.current = setInterval(() => {
-      if (playerInstance.current && playerInstance.current.getCurrentTime) {
+      if (playerInstance.current?.getCurrentTime) {
         setCurrentTime(playerInstance.current.getCurrentTime());
         setDuration(playerInstance.current.getDuration());
       }
     }, 1000);
   };
 
-  // Stop the interval timer
+  // Stop the playback timer
   const stopTimer = () => {
     if (timerId.current) {
       clearInterval(timerId.current);
@@ -88,17 +97,10 @@ const MusicPlayer = () => {
     }
   };
 
-  // Extract video ID from a YouTube URL using regex
-  const extractVideoId = (url) => {
-    const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-    const match = url.match(regex);
-    return match ? match[1] : "";
-  };
-
-  // Load video into player by ID, alert if invalid URL
+  // Load video by ID or alert invalid URL
   const loadVideo = () => {
     if (!playerInstance.current) return;
-    const id = extractVideoId(input);
+    const id = extractVideoId(input.trim());
     if (id) {
       playerInstance.current.loadVideoById(id);
     } else {
@@ -106,7 +108,7 @@ const MusicPlayer = () => {
     }
   };
 
-  // Toggle play/pause state of player
+  // Play or pause video toggle
   const togglePlayPause = () => {
     if (!playerInstance.current) return;
     if (isPlaying) {
@@ -116,7 +118,7 @@ const MusicPlayer = () => {
     }
   };
 
-  // Adjust volume both in state and on player
+  // Update volume in state and player
   const handleVolumeChange = (e) => {
     const newVol = parseInt(e.target.value, 10);
     setVolume(newVol);
@@ -125,23 +127,20 @@ const MusicPlayer = () => {
     }
   };
 
-  // Seek forward or backward by specified seconds
+  // Seek forward/backward by seconds, clamped to [0, duration]
   const seekRelative = (seconds) => {
     if (!playerInstance.current) return;
     const current = playerInstance.current.getCurrentTime() || 0;
     const dur = playerInstance.current.getDuration() || 0;
-    let newTime = current + seconds;
-    newTime = Math.max(0, Math.min(newTime, dur)); // Clamp between 0 and duration
+    const newTime = Math.min(Math.max(current + seconds, 0), dur);
     playerInstance.current.seekTo(newTime, true);
     setCurrentTime(newTime);
   };
 
   return (
     <div className="music-player">
-      {/* YouTube iframe player container */}
       <div ref={playerRef} id="ytplayer" style={{ marginBottom: 12 }}></div>
 
-      {/* Input for entering YouTube video URL */}
       <input
         type="text"
         placeholder="Enter YouTube URL to play..."
@@ -151,7 +150,6 @@ const MusicPlayer = () => {
         style={{ width: "100%", marginBottom: 10, padding: "8px" }}
       />
 
-      {/* Playback controls */}
       <div
         className="music-controls"
         style={{ display: "flex", alignItems: "center", gap: "10px" }}
