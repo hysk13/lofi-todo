@@ -8,6 +8,8 @@ const MusicPlayer = () => {
 
   const [input, setInput] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLooping, setIsLooping] = useState(false);
+  const loopRef = useRef(isLooping);
   const [volume, setVolume] = useState(50);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -50,6 +52,13 @@ const MusicPlayer = () => {
             const title = playerInstance.current.getVideoData()?.title;
             if (title) document.title = title;
             startTimer();
+          }
+          if (state === window.YT.PlayerState.ENDED) {
+              if (loopRef.current) {
+                playerInstance.current.seekTo(0);
+                playerInstance.current.playVideo();
+              }
+            stopTimer();
           } else {
             stopTimer();
           }
@@ -187,6 +196,26 @@ const MusicPlayer = () => {
 
           <button onClick={loadVideo} style={{ padding: "6px 12px" }}>
             Load
+          </button>
+
+          <button
+            onClick={() => {
+              setIsLooping((prev) => {
+                const next = !prev;
+                loopRef.current = next;
+                return next;
+              });
+            }}
+            title="Toggle Loop"
+            style={{
+              backgroundColor: isLooping ? "#4caf50" : "#ccc",
+              color: isLooping ? "#fff" : "#000",
+              border: "none",
+              padding: "6px 12px",
+              cursor: "pointer"
+            }}
+          >
+            🔁
           </button>
 
           <p style={{ marginLeft: "12px" }}>Vol:</p>
